@@ -1,0 +1,97 @@
+Sub LinkExcelRateSheetToWord()
+    Dim objWord As Object
+    Dim objDoc As Object
+    Dim ws As Worksheet
+    Dim rng As Range
+    Dim cell As Range
+    Dim rowRange As Range
+    Dim lastRow As Long
+    Dim lastCol As Long
+    Dim filteredData As Range
+    Dim wordFilePath As String
+
+    ' Set the path of the Word document
+    wordFilePath = "C:\Path\To\Your\Document.docx"  ' Update this path
+    
+    ' Define the Excel worksheet containing the rate sheet
+    Set ws = ThisWorkbook.Sheets("Rates")
+    
+    ' Find the last row and column with data
+    lastRow = ws.Cells(ws.Rows.Count, "A").End(xlUp).Row
+    lastCol = ws.Cells(1, ws.Columns.Count).End(xlToLeft).Column
+
+    ' Create a new instance of Word application
+    Set objWord = CreateObject("Word.Application")
+    objWord.Visible = True ' Set to False if you don't want to see Word
+
+    ' Open the Word document
+    Set objDoc = objWord.Documents.Open(wordFilePath)
+    
+    ' Filter the data to avoid blank rows (you can adjust this as needed)
+    Set rng = ws.Range(ws.Cells(1, 1), ws.Cells(lastRow, lastCol))
+    
+    ' Loop through rows in the range to filter out blank rows
+    For Each cell In rng.Columns(1).Cells
+        If WorksheetFunction.CountA(cell.EntireRow) > 0 Then
+            If filteredData Is Nothing Then
+                Set filteredData = cell.EntireRow
+            Else
+                Set filteredData = Union(filteredData, cell.EntireRow)
+            End If
+        End If
+    Next cell
+    
+    ' Copy the filtered data from Excel
+    If Not filteredData Is Nothing Then
+        filteredData.Copy
+    Else
+        MsgBox "No data to copy. Please check the sheet for non-blank rows."
+        Exit Sub
+    End If
+    
+    ' Paste the filtered range into the Word document as a linked table
+    objDoc.Content.PasteSpecial DataType:=2 ' 2 = Linked Excel Range
+
+    ' Apply Table Formatting in Word (optional, but recommended)
+    Dim wordTable As Object
+    Set wordTable = objDoc.Tables(1) ' Assume the first table in Word
+
+    ' Set Table Formatting
+    With wordTable
+        ' Set table style (adjust as needed)
+        .Style = "Table Grid" ' You can choose a predefined table style
+        
+        ' Set auto resizing and adjust to content
+        .AutoFitBehavior (2) ' wdAutoFitContent
+        
+        ' Adjust the borders (optional)
+        .Borders.Enable = True
+        .Borders.OutsideColor = RGB(0, 0, 0) ' Set border color to black
+        .Borders.InsideColor = RGB(0, 0, 0) ' Set inside border color
+        
+        ' Set header row bold
+        .Rows(1).Range.Font.Bold = True
+        
+        ' Apply text alignment to the table (center alignment for example)
+        .Rows.Alignment = 1 ' 1 = center alignment, 0 = left alignment, 2 = right alignment
+        
+        ' Optional: Adjust the width of specific columns (you can customize this)
+        .Columns(1).Width = 100
+        .Columns(2).Width = 150
+        .Columns(3).Width = 200
+    End With
+    
+    ' Optional: Save and close Word document
+    objDoc.Save
+    objDoc.Close
+    objWord.Quit
+    
+    ' Clean up objects
+    Set objDoc = Nothing
+    Set objWord = Nothing
+    Set rng = Nothing
+    Set ws = Nothing
+    Set filteredData = Nothing
+    
+    MsgBox "Excel data has been linked to Word successfully!"
+End Sub
